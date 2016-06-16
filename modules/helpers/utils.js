@@ -116,6 +116,35 @@ export function loadAsyncConnect({ components, filter = () => true, ...rest }) {
 }
 
 /**
+ * Checks to see if there are any async calls required
+ * and loads data
+ * @param  {Object} data.components
+ * @param  {Function} [data.filter] - filtering function
+ * @return {Boolean}
+ */
+export function shouldRunAsync({ components, filter = () => true }) {
+  const flattened = filterAndFlattenComponents(components);
+
+  return flattened.reduce((asyncComponents, component) =>
+    (asyncComponents.concat(component.reduxAsyncConnect
+      .reduce((itemsResults, item) => {
+        if (!filter(item, component)) itemsResults.push(item);
+        return itemsResults;
+      }, []))), []).length !== 0;
+}
+
+/**
+ * Function that accepts components with reduxAsyncConnect definitions
+ * and loads data for filtered components
+ * @param  {Object} data.components
+ * @param  {Function} [data.filter] - filtering function
+ * @return {Promise}
+ */
+export function loadAsyncFilteredConnect(props) {
+  return loadAsyncConnect({ ...props, filter: (a, b) => !props.filter(a, b) });
+}
+
+/**
  * Helper to load data on server
  * @param  {Mixed} args
  * @return {Promise}

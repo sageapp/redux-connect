@@ -1,6 +1,6 @@
 import React, { PropTypes, Component } from 'react';
 import RouterContext from 'react-router/lib/RouterContext';
-import { loadAsyncConnect } from '../helpers/utils';
+import { loadAsyncConnect, loadAsyncFilteredConnect, shouldRunAsync } from '../helpers/utils';
 
 export default class AsyncConnect extends Component {
   static propTypes = {
@@ -73,11 +73,21 @@ export default class AsyncConnect extends Component {
       // loaded props last time and not the last called route
       if (this.loadDataCounter === loadDataCounterOriginal && this.mounted !== false) {
         this.setState({ propsToShow: props });
-      }
 
-      // TODO: investigate race conditions
-      // do we need to call this if it's not last invocation?
-      this.props.endGlobalLoad();
+        if (shouldRunAsync(props)) {
+          loadAsyncFilteredConnect({ ...props, store }).then(() => {
+            // We need to make sure that we only end global load for the last invocation
+            // since we do not want the race conditions to affect state of the current view.
+            // A good example of this would be progress bar.
+            if (this.loadDataCounter === loadDataCounterOriginal && this.mounted !== false) {
+              this.forceUpdate();
+              this.props.endGlobalLoad();
+            }
+          });
+        } else {
+          this.props.endGlobalLoad();
+        }
+      }
     }))(this.loadDataCounter);
   }
 
